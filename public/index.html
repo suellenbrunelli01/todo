@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TASKFLOW — Gestão Inteligente de Tarefas e Produtividade</title>
+  
+  <!-- Fontes do Google: Plus Jakarta Sans e Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome 6 (ícones via CDN) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- Folha de Estilos Própria -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Overlay para fechar sidebar no mobile/tablet -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- Layout Principal em Grid/Flex -->
+  <div class="app-layout">
+    
+    <!-- SIDEBAR / MENU LATERAL -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-container">
+          <div class="logo-icon">
+            <i class="fa-solid fa-layer-group"></i>
+          </div>
+          <div class="logo-text">
+            <span class="brand-title">TASKFLOW</span>
+            <span class="brand-badge">PRO</span>
+          </div>
+        </div>
+        <button class="btn-icon mobile-sidebar-close" id="mobileSidebarClose" title="Fechar Menu">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Ação Rápida: Nova Tarefa -->
+      <div class="sidebar-action">
+        <button class="btn btn-primary btn-block btn-new-task" id="btnOpenNewTaskModal">
+          <i class="fa-solid fa-plus"></i>
+          <span>Nova tarefa</span>
+        </button>
+      </div>
+
+      <!-- Navegação Principal -->
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Visões</div>
+        <ul class="nav-list">
+          <li class="nav-item">
+            <button class="nav-link active" data-view="overview" id="navOverview">
+              <i class="fa-solid fa-gauge-high"></i>
+              <span class="nav-label">Visão geral</span>
+              <span class="badge-count" id="countAllBadge">0</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-view="all" id="navMyTasks">
+              <i class="fa-solid fa-list-check"></i>
+              <span class="nav-label">Minhas tarefas</span>
+              <span class="badge-count" id="countPendingBadge">0</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-view="today" id="navToday">
+              <i class="fa-regular fa-calendar-check"></i>
+              <span class="nav-label">Hoje</span>
+              <span class="badge-count badge-accent" id="countTodayBadge">0</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-view="upcoming" id="navUpcoming">
+              <i class="fa-regular fa-calendar-days"></i>
+              <span class="nav-label">Próximas</span>
+              <span class="badge-count" id="countUpcomingBadge">0</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-view="completed" id="navCompleted">
+              <i class="fa-solid fa-circle-check"></i>
+              <span class="nav-label">Concluídas</span>
+              <span class="badge-count badge-success" id="countCompletedBadge">0</span>
+            </button>
+          </li>
+        </ul>
+
+        <!-- Seção de Projetos -->
+        <div class="nav-section-header">
+          <span class="nav-section-label">Projetos</span>
+          <button class="btn-icon-subtle" id="btnOpenNewProjectModal" title="Adicionar Projeto">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+        <ul class="projects-list" id="sidebarProjectsList">
+          <!-- Renderizado dinamicamente via JS -->
+        </ul>
+      </nav>
+
+      <!-- Rodapé da Sidebar: Perfil do Usuário e Configurações -->
+      <div class="sidebar-footer">
+        <button class="settings-trigger" id="btnOpenSettingsModal" title="Configurações do Taskflow">
+          <i class="fa-solid fa-gear"></i>
+          <span>Configurações</span>
+        </button>
+        <div class="user-profile-card">
+          <div class="user-avatar-wrap">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="Avatar Usuário" class="user-avatar" id="sidebarAvatar">
+            <span class="status-indicator-online"></span>
+          </div>
+          <div class="user-details">
+            <span class="user-name" id="sidebarUserName">Alexandre Rossi</span>
+            <span class="user-role" id="sidebarUserRole">Product Lead</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- WRAPPER CENTRAL: HEADER + DASHBOARD -->
+    <div class="main-wrapper">
+      
+      <!-- HEADER SUPERIOR -->
+      <header class="app-header">
+        <div class="header-left">
+          <button class="btn-icon mobile-menu-toggle" id="mobileMenuToggle" title="Abrir Menu">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          
+          <!-- Campo de Busca em Tempo Real -->
+          <div class="search-input-wrapper">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input 
+              type="text" 
+              class="search-input" 
+              id="globalSearchInput" 
+              placeholder="Pesquisar tarefas, tags ou projetos..."
+              autocomplete="off"
+            >
+            <button class="clear-search-btn" id="btnClearSearch" title="Limpar pesquisa">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- Data Atual & Saudação Resumida -->
+          <div class="header-datetime-box">
+            <span class="current-greeting" id="headerGreeting">Olá, Alexandre</span>
+            <span class="current-date-text" id="headerCurrentDate">Segunda-feira, 17 de Nov</span>
+          </div>
+
+          <!-- Indicador de Tarefas Pendentes -->
+          <div class="header-pending-pill" title="Tarefas pendentes no seu fluxo">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span id="headerPendingCount">0 pendentes</span>
+          </div>
+
+          <!-- Notificações Dropdown Container -->
+          <div class="notification-dropdown-container">
+            <button class="btn-icon notification-btn" id="btnNotifications" title="Notificações e Avisos">
+              <i class="fa-regular fa-bell"></i>
+              <span class="notification-badge" id="notificationBadge"></span>
+            </button>
+            <div class="notification-popover" id="notificationPopover">
+              <div class="notification-popover-header">
+                <h6>Notificações e Prazos</h6>
+                <span class="badge-tag" id="notificationCountLabel">0 novos</span>
+              </div>
+              <div class="notification-popover-body" id="notificationList">
+                <!-- Renderizado via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Avatar do Usuário -->
+          <div class="header-user-avatar-wrap" id="headerAvatarBtn" title="Alexandre Rossi">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="Avatar Usuário" class="header-avatar" id="headerAvatarImg">
+          </div>
+        </div>
+      </header>
+
+      <!-- CONTEÚDO PRINCIPAL: DASHBOARD -->
+      <main class="app-main-content">
+        
+        <!-- CABEÇALHO DO DASHBOARD -->
+        <section class="dashboard-hero">
+          <div class="hero-left">
+            <h1 class="hero-title" id="pageTitle">Meu espaço de trabalho</h1>
+            <p class="hero-subtitle">Organize suas tarefas e mantenha o foco no que importa.</p>
+          </div>
+          <div class="hero-right">
+            <button class="btn btn-primary" id="btnHeroNewTask">
+              <i class="fa-solid fa-plus"></i>
+              <span>Adicionar Tarefa</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- CARDS DE INDICADORES (MÉTRICAS) -->
+        <section class="metrics-grid">
+          <!-- Card Total -->
+          <div class="metric-card metric-total" data-filter-click="all">
+            <div class="metric-card-top">
+              <span class="metric-label">Total de Tarefas</span>
+              <div class="metric-icon">
+                <i class="fa-solid fa-list-ul"></i>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span class="metric-number" id="metricTotal">0</span>
+              <span class="metric-trend"><i class="fa-solid fa-chart-line"></i> Cadastradas</span>
+            </div>
+          </div>
+
+          <!-- Card Pendentes -->
+          <div class="metric-card metric-pending" data-filter-click="pending">
+            <div class="metric-card-top">
+              <span class="metric-label">Tarefas Pendentes</span>
+              <div class="metric-icon">
+                <i class="fa-solid fa-hourglass-half"></i>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span class="metric-number" id="metricPending">0</span>
+              <span class="metric-trend trend-amber"><i class="fa-solid fa-arrow-right"></i> Em andamento</span>
+            </div>
+          </div>
+
+          <!-- Card Concluídas -->
+          <div class="metric-card metric-completed" data-filter-click="completed">
+            <div class="metric-card-top">
+              <span class="metric-label">Tarefas Concluídas</span>
+              <div class="metric-icon">
+                <i class="fa-solid fa-circle-check"></i>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span class="metric-number" id="metricCompleted">0</span>
+              <span class="metric-trend trend-green"><i class="fa-solid fa-check-double"></i> Finalizadas</span>
+            </div>
+          </div>
+
+          <!-- Card Atrasadas -->
+          <div class="metric-card metric-overdue" data-filter-click="overdue">
+            <div class="metric-card-top">
+              <span class="metric-label">Tarefas Atrasadas</span>
+              <div class="metric-icon">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span class="metric-number" id="metricOverdue">0</span>
+              <span class="metric-trend trend-red"><i class="fa-solid fa-fire"></i> Atenção imediata</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- SEÇÃO DE PRODUTIVIDADE E PROGRESSO -->
+        <section class="productivity-card">
+          <div class="productivity-header">
+            <div class="productivity-title-group">
+              <div class="productivity-icon-badge">
+                <i class="fa-solid fa-bolt"></i>
+              </div>
+              <div>
+                <h3 class="productivity-title">Índice de Produtividade</h3>
+                <span class="productivity-subtitle">Acompanhe seu progresso de conclusão em tempo real</span>
+              </div>
+            </div>
+            <div class="productivity-stats-pill">
+              <span id="productivityCompletedCount">0</span> finalizadas de <span id="productivityTotalCount">0</span>
+            </div>
+          </div>
+
+          <!-- Barra de Progresso Customizada -->
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="productivityProgressBar" style="width: 0%;"></div>
+          </div>
+
+          <div class="productivity-footer">
+            <div class="stat-item">
+              <span class="stat-bullet bullet-success"></span>
+              <span class="stat-text">Finalizadas: <strong id="statCompletedNum">0</strong></span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-bullet bullet-primary"></span>
+              <span class="stat-text">Restantes: <strong id="statRemainingNum">0</strong></span>
+            </div>
+            <div class="stat-item stat-right">
+              <span class="stat-text">Aproveitamento: <strong id="statPercentage">0%</strong></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- SEÇÃO: PLANEJAMENTO POR PERÍODO (ABAS TEMPORAIS) -->
+        <section class="planning-tabs-section">
+          <div class="planning-tabs-header">
+            <div class="section-badge-tag"><i class="fa-regular fa-clock"></i> Planejamento Temporal</div>
+            <span class="planning-hint">Selecione o horizonte de planejamento para focar suas entregas</span>
+          </div>
+          <div class="planning-tabs-nav" role="tablist">
+            <button class="planning-tab-btn active" data-period="all" role="tab" aria-selected="true">
+              <i class="fa-solid fa-arrows-split-up-and-left"></i>
+              <div class="tab-btn-text">
+                <span class="tab-name">Todos os Períodos</span>
+                <span class="tab-desc">Visão consolidada</span>
+              </div>
+              <span class="tab-counter" id="tabCountAll">0</span>
+            </button>
+
+            <button class="planning-tab-btn" data-period="curto" role="tab" aria-selected="false">
+              <i class="fa-solid fa-person-running"></i>
+              <div class="tab-btn-text">
+                <span class="tab-name">Curto Prazo</span>
+                <span class="tab-desc">Até 4 meses (tático)</span>
+              </div>
+              <span class="tab-counter" id="tabCountCurto">0</span>
+            </button>
+
+            <button class="planning-tab-btn" data-period="medio" role="tab" aria-selected="false">
+              <i class="fa-solid fa-bullseye"></i>
+              <div class="tab-btn-text">
+                <span class="tab-name">Médio Prazo</span>
+                <span class="tab-desc">Até 12 meses (estratégico)</span>
+              </div>
+              <span class="tab-counter" id="tabCountMedio">0</span>
+            </button>
+
+            <button class="planning-tab-btn" data-period="longo" role="tab" aria-selected="false">
+              <i class="fa-solid fa-mountain"></i>
+              <div class="tab-btn-text">
+                <span class="tab-name">Longo Prazo</span>
+                <span class="tab-desc">Até 60 meses (visão macro)</span>
+              </div>
+              <span class="tab-counter" id="tabCountLongo">0</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- SEÇÃO DE CONTROLES E FILTROS DE TAREFAS -->
+        <section class="task-controls-section">
+          <div class="filters-row">
+            <!-- Filtros Rápidos de Status -->
+            <div class="status-filters-group">
+              <button class="filter-chip active" data-status-filter="all">Todas</button>
+              <button class="filter-chip" data-status-filter="today">Hoje</button>
+              <button class="filter-chip" data-status-filter="upcoming">Próximas</button>
+              <button class="filter-chip" data-status-filter="overdue">Atrasadas</button>
+              <button class="filter-chip" data-status-filter="completed">Concluídas</button>
+            </div>
+
+            <!-- Seletores Combinados: Prioridade, Projeto e Ordenação -->
+            <div class="dropdown-filters-group">
+              <!-- Filtro de Prioridade -->
+              <div class="select-wrapper">
+                <i class="fa-solid fa-flag select-icon"></i>
+                <select id="filterPrioritySelect" class="form-select-sm" aria-label="Filtrar por prioridade">
+                  <option value="all">Todas as Prioridades</option>
+                  <option value="urgente">Urgente (Vermelho)</option>
+                  <option value="alta">Alta (Laranja)</option>
+                  <option value="media">Média (Azul)</option>
+                  <option value="baixa">Baixa (Verde)</option>
+                </select>
+              </div>
+
+              <!-- Filtro de Projeto -->
+              <div class="select-wrapper">
+                <i class="fa-solid fa-folder select-icon"></i>
+                <select id="filterProjectSelect" class="form-select-sm" aria-label="Filtrar por projeto">
+                  <option value="all">Todos os Projetos</option>
+                  <!-- Preenchido dinamicamente -->
+                </select>
+              </div>
+
+              <!-- Ordenação -->
+              <div class="select-wrapper">
+                <i class="fa-solid fa-arrow-down-short-wide select-icon"></i>
+                <select id="sortTasksSelect" class="form-select-sm" aria-label="Ordenar tarefas">
+                  <option value="dueDateAsc">Vencimento (Mais próximo)</option>
+                  <option value="dueDateDesc">Vencimento (Mais distante)</option>
+                  <option value="priorityDesc">Prioridade (Maior para menor)</option>
+                  <option value="priorityAsc">Prioridade (Menor para maior)</option>
+                  <option value="titleAsc">Título (A - Z)</option>
+                </select>
+              </div>
+
+              <!-- Botão Limpar Filtros -->
+              <button class="btn btn-ghost btn-sm" id="btnResetFilters" title="Limpar todos os filtros">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span>Redefinir</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- LISTA PRINCIPAL DE TAREFAS -->
+        <section class="task-list-section">
+          <!-- Cabeçalho Informativo da Lista -->
+          <div class="task-list-info-bar">
+            <span class="info-results-count" id="taskListCountDisplay">Mostrando 0 tarefas</span>
+            <div class="active-filter-indicators" id="activeFilterTags">
+              <!-- Tags visuais de filtros aplicados via JS -->
+            </div>
+          </div>
+
+          <!-- Container da Lista de Tarefas -->
+          <div class="task-items-container" id="taskItemsContainer">
+            <!-- Renderizado dinamicamente via JS -->
+          </div>
+
+          <!-- Estado Vazio (Empty State) -->
+          <div class="empty-state-card" id="emptyStateContainer" style="display: none;">
+            <div class="empty-state-illustration">
+              <i class="fa-solid fa-clipboard-check"></i>
+            </div>
+            <h4 class="empty-state-title" id="emptyStateTitle">Nenhuma tarefa encontrada</h4>
+            <p class="empty-state-desc" id="emptyStateDesc">Você está em dia com seus afazeres ou nenhum item atende aos filtros selecionados.</p>
+            <button class="btn btn-primary" id="btnEmptyStateAction">
+              <i class="fa-solid fa-plus"></i>
+              <span>Criar Nova Tarefa</span>
+            </button>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- FOOTER DA APLICAÇÃO -->
+      <footer class="app-main-footer">
+        <p><strong>TASKFLOW</strong> &copy; 2026 &bull; Plataforma SaaS de Alta Produtividade e Execução Estratégica.</p>
+        <span class="storage-indicator"><i class="fa-solid fa-database"></i> Dados salvos localmente (LocalStorage)</span>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- MODAIS DO SISTEMA -->
+  <!-- ========================================================== -->
+
+  <!-- MODAL: CRIAR / EDITAR TAREFA -->
+  <div class="modal-overlay" id="taskModalOverlay">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTaskTitle">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge" id="modalTaskIconBadge">
+            <i class="fa-solid fa-plus"></i>
+          </div>
+          <div>
+            <h3 class="modal-title" id="modalTaskTitle">Nova Tarefa</h3>
+            <span class="modal-subtitle">Preencha os detalhes e o horizonte de planejamento</span>
+          </div>
+        </div>
+        <button class="btn-icon modal-close" id="btnCloseTaskModal" title="Fechar modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="taskForm" novalidate>
+        <input type="hidden" id="taskFormId" value="">
+
+        <div class="modal-body">
+          <!-- Alerta de Erro de Validação -->
+          <div class="form-alert-error" id="taskFormAlert" style="display: none;">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span id="taskFormAlertText">Por favor, preencha todos os campos obrigatórios.</span>
+          </div>
+
+          <!-- Campo: Título -->
+          <div class="form-group">
+            <label for="taskTitle" class="form-label required">Título da Tarefa</label>
+            <input 
+              type="text" 
+              id="taskTitle" 
+              class="form-input" 
+              placeholder="Ex: Concluir protótipo de alta fidelidade no Figma" 
+              required
+              maxlength="120"
+            >
+            <span class="field-helper">Dê um nome direto e objetivo para sua atividade.</span>
+          </div>
+
+          <!-- Campo: Descrição -->
+          <div class="form-group">
+            <label for="taskDescription" class="form-label">Descrição Resumida</label>
+            <textarea 
+              id="taskDescription" 
+              class="form-textarea" 
+              rows="3" 
+              placeholder="Descreva detalhes, etapas, links ou notas de execução..."
+              maxlength="400"
+            ></textarea>
+          </div>
+
+          <!-- Grid de Campos Secundários: Data e Prioridade -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="taskDueDate" class="form-label required">Data de Vencimento</label>
+              <input 
+                type="date" 
+                id="taskDueDate" 
+                class="form-input" 
+                required
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="taskPriority" class="form-label required">Prioridade</label>
+              <select id="taskPriority" class="form-select" required>
+                <option value="baixa">🟢 Baixa (Normal)</option>
+                <option value="media" selected>🔵 Média (Padrão)</option>
+                <option value="alta">🟠 Alta (Importante)</option>
+                <option value="urgente">🔴 Urgente (Crítica)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Grid de Campos: Projeto e Categoria -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="taskProject" class="form-label required">Projeto Relacionado</label>
+              <select id="taskProject" class="form-select" required>
+                <!-- Preenchido dinamicamente via JS -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="taskCategory" class="form-label">Categoria / Tag</label>
+              <input 
+                type="text" 
+                id="taskCategory" 
+                class="form-input" 
+                placeholder="Ex: Design, Backend, Marketing..." 
+                maxlength="30"
+              >
+            </div>
+          </div>
+
+          <!-- Campo: Período de Planejamento -->
+          <div class="form-group">
+            <label class="form-label required">Período de Planejamento Temporal</label>
+            <div class="period-radios-grid">
+              <label class="radio-period-card">
+                <input type="radio" name="taskPeriod" value="curto" checked>
+                <div class="radio-period-content">
+                  <div class="radio-period-title">Curto Prazo</div>
+                  <div class="radio-period-desc">Até 4 meses</div>
+                </div>
+              </label>
+
+              <label class="radio-period-card">
+                <input type="radio" name="taskPeriod" value="medio">
+                <div class="radio-period-content">
+                  <div class="radio-period-title">Médio Prazo</div>
+                  <div class="radio-period-desc">Até 12 meses</div>
+                </div>
+              </label>
+
+              <label class="radio-period-card">
+                <input type="radio" name="taskPeriod" value="longo">
+                <div class="radio-period-content">
+                  <div class="radio-period-title">Longo Prazo</div>
+                  <div class="radio-period-desc">Até 60 meses</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="btnCancelTaskModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveTask">
+            <i class="fa-solid fa-check"></i>
+            <span>Salvar tarefa</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: GERENCIAMENTO DE PROJETO (CRIAR / EDITAR) -->
+  <div class="modal-overlay" id="projectModalOverlay">
+    <div class="modal-card modal-card-sm" role="dialog" aria-modal="true" aria-labelledby="modalProjectTitle">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge badge-project">
+            <i class="fa-solid fa-folder-plus"></i>
+          </div>
+          <div>
+            <h3 class="modal-title" id="modalProjectTitle">Novo Projeto</h3>
+            <span class="modal-subtitle">Organize suas tarefas por iniciativas ou áreas</span>
+          </div>
+        </div>
+        <button class="btn-icon modal-close" id="btnCloseProjectModal" title="Fechar modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="projectForm" novalidate>
+        <input type="hidden" id="projectFormId" value="">
+
+        <div class="modal-body">
+          <div class="form-alert-error" id="projectFormAlert" style="display: none;">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span id="projectFormAlertText">Por favor, informe o nome do projeto.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="projectName" class="form-label required">Nome do Projeto</label>
+            <input 
+              type="text" 
+              id="projectName" 
+              class="form-input" 
+              placeholder="Ex: Refatoração do Design System" 
+              required
+              maxlength="40"
+            >
+          </div>
+
+          <!-- Seletor de Cores do Projeto -->
+          <div class="form-group">
+            <label class="form-label required">Identificação por Cor</label>
+            <div class="color-picker-grid" id="projectColorPicker">
+              <!-- Cores SaaS selecionáveis -->
+              <label class="color-swatch-label">
+                <input type="radio" name="projectColor" value="#4f46e5" checked>
+                <span class="swatch-circle" style="background-color: #4f46e5;"></span>
+              </label>
+              <label class="color-swatch-label">
+                <input type="radio" name="projectColor" value="#06b6d4">
+                <span class="swatch-circle" style="background-color: #06b6d4;"></span>
+              </label>
+              <label class="color-swatch-label">
+                <input type="radio" name="projectColor" value="#10b981">
+                <span class="swatch-circle" style="background-color: #10b981;"></span>
+              </label>
+              <label class="color-swatch-label">
+                <input type="radio" name="projectColor" value="#f59e0b">
+                <span class="swatch-circle" style="background-color: #f59e0b;"></span>
+              </label>
+              <label class="color-swatch-label">
+                <input type="radio" name="projectColor" value="#f43f5e">
+                <span class="swatch-circle" style="background-color: #f43f5e;"></span>
+              </label>
+              <label class="color-swatch-label">
+                <input type="radio" name="projectColor" value="#8b5cf6">
+                <span class="swatch-circle" style="background-color: #8b5cf6;"></span>
+              </label>
+              <label class="color-swatch-label">
+                <input type="radio" name="projectColor" value="#ec4899">
+                <span class="swatch-circle" style="background-color: #ec4899;"></span>
+              </label>
+              <label class="color-swatch-label">
+                <input type="radio" name="projectColor" value="#3b82f6">
+                <span class="swatch-circle" style="background-color: #3b82f6;"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="btnCancelProjectModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveProject">
+            <i class="fa-solid fa-check"></i>
+            <span>Salvar Projeto</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMAÇÃO DE EXCLUSÃO (FEEDBACK SEGURO) -->
+  <div class="modal-overlay" id="confirmModalOverlay">
+    <div class="modal-card modal-card-sm" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge badge-danger">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <div>
+            <h3 class="modal-title" id="confirmModalTitle">Confirmar Exclusão</h3>
+            <span class="modal-subtitle">Esta ação não poderá ser desfeita</span>
+          </div>
+        </div>
+        <button class="btn-icon modal-close" id="btnCloseConfirmModal" title="Fechar modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="confirm-message" id="confirmModalMessage">Tem certeza de que deseja excluir permanentemente este item?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="btnCancelConfirm">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btnExecuteConfirm">
+          <i class="fa-solid fa-trash-can"></i>
+          <span>Excluir Definitivamente</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIGURAÇÕES E PREFERÊNCIAS DO TASKFLOW -->
+  <div class="modal-overlay" id="settingsModalOverlay">
+    <div class="modal-card modal-card-sm" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge">
+            <i class="fa-solid fa-sliders"></i>
+          </div>
+          <div>
+            <h3 class="modal-title" id="settingsModalTitle">Configurações do Perfil</h3>
+            <span class="modal-subtitle">Personalize suas preferências locais</span>
+          </div>
+        </div>
+        <button class="btn-icon modal-close" id="btnCloseSettingsModal" title="Fechar modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="settingsForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="settingsUserName" class="form-label">Nome do Usuário</label>
+            <input type="text" id="settingsUserName" class="form-input" value="Alexandre Rossi">
+          </div>
+          <div class="form-group">
+            <label for="settingsUserRole" class="form-label">Cargo / Especialidade</label>
+            <input type="text" id="settingsUserRole" class="form-input" value="Product Lead">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ações de Dados</label>
+            <div class="settings-actions-group">
+              <button type="button" class="btn btn-ghost btn-sm" id="btnReloadSampleData">
+                <i class="fa-solid fa-rotate"></i>
+                <span>Restaurar Dados de Exemplo</span>
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm text-danger" id="btnClearAllData">
+                <i class="fa-solid fa-trash"></i>
+                <span>Limpar Todo o LocalStorage</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="btnCancelSettings">Fechar</button>
+          <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATIONS CONTAINER (Feedback Visual) -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Script Vanilla JavaScript -->
+  <script src="script.js"></script>
+</body>
+</html>
