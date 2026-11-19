@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TASKFLOW — Gestão Inteligente de Tarefas e Produtividade</title>
+  <title>Tarefas — Gestão Inteligente de Tarefas e Produtividade</title>
   
   <!-- Fontes do Google: Plus Jakarta Sans e Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,8 +31,7 @@
             <i class="fa-solid fa-layer-group"></i>
           </div>
           <div class="logo-text">
-            <span class="brand-title">TASKFLOW</span>
-            <span class="brand-badge">PRO</span>
+            <span class="brand-title">Tarefas</span>
           </div>
         </div>
         <button class="btn-icon mobile-sidebar-close" id="mobileSidebarClose" title="Fechar Menu">
@@ -103,7 +102,7 @@
 
       <!-- Rodapé da Sidebar: Perfil do Usuário e Configurações -->
       <div class="sidebar-footer">
-        <button class="settings-trigger" id="btnOpenSettingsModal" title="Configurações do Taskflow">
+        <button class="settings-trigger" id="btnOpenSettingsModal" title="Configurações do Tarefas">
           <i class="fa-solid fa-gear"></i>
           <span>Configurações</span>
         </button>
@@ -430,8 +429,8 @@
 
       <!-- FOOTER DA APLICAÇÃO -->
       <footer class="app-main-footer">
-        <p><strong>TASKFLOW</strong> &copy; 2026 &bull; Plataforma SaaS de Alta Produtividade e Execução Estratégica.</p>
-        <span class="storage-indicator"><i class="fa-solid fa-database"></i> Dados salvos localmente (LocalStorage)</span>
+        <p><strong>Tarefas</strong> &copy; 2026 &bull; Plataforma SaaS de Alta Produtividade e Execução Estratégica.</p>
+        <span class="storage-indicator"><i class="fa-solid fa-cloud"></i> Conectado ao Firebase Firestore</span>
       </footer>
 
     </div>
@@ -703,7 +702,7 @@
     </div>
   </div>
 
-  <!-- MODAL: CONFIGURAÇÕES E PREFERÊNCIAS DO TASKFLOW -->
+  <!-- MODAL: CONFIGURAÇÕES E PREFERÊNCIAS DO TAREFAS -->
   <div class="modal-overlay" id="settingsModalOverlay">
     <div class="modal-card modal-card-sm" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
       <div class="modal-header">
@@ -733,10 +732,6 @@
           <div class="form-group">
             <label class="form-label">Ações de Dados</label>
             <div class="settings-actions-group">
-              <button type="button" class="btn btn-ghost btn-sm" id="btnReloadSampleData">
-                <i class="fa-solid fa-rotate"></i>
-                <span>Restaurar Dados de Exemplo</span>
-              </button>
               <button type="button" class="btn btn-ghost btn-sm text-danger" id="btnClearAllData">
                 <i class="fa-solid fa-trash"></i>
                 <span>Limpar Todo o LocalStorage</span>
@@ -754,6 +749,28 @@
 
   <!-- TOAST NOTIFICATIONS CONTAINER (Feedback Visual) -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Firebase SDK e Inicialização (CDN) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAd4GBG704oMKk5XLrJaLMU4gZux7FMrT0",
+      authDomain: "to-do-list-f67d5.firebaseapp.com",
+      projectId: "to-do-list-f67d5",
+      storageBucket: "to-do-list-f67d5.firebasestorage.app",
+      messagingSenderId: "965040982352",
+      appId: "1:965040982352:web:e0a6dd6cd2b838f22fc455"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    // Disponibilize o 'db' e as funções do Firestore globalmente ou no escopo da aplicação para uso nas funções de CRUD de tarefas.
+    window.db = db;
+    window.firestore = { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot };
+    window.dispatchEvent(new CustomEvent('firebase-ready'));
+  </script>
 
   <!-- Script Vanilla JavaScript -->
   <script src="script.js"></script>

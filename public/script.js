@@ -1,8 +1,8 @@
 /**
- * TASKFLOW — Core Application Logic
+ * Tarefas — Core Application Logic
  * Vanilla JavaScript (ES6+)
  * 
- * Arquitetura orientada a componentes, persistência em LocalStorage,
+ * Arquitetura orientada a componentes, persistência em Firebase Firestore,
  * filtragem dinâmica, busca em tempo real e atualização de métricas reativa.
  */
 
@@ -13,13 +13,12 @@
      1. CONSTANTES & CHAVES DO LOCALSTORAGE
      ========================================================================== */
   const STORAGE_KEYS = {
-    TASKS: 'taskflow_tasks_data',
-    PROJECTS: 'taskflow_projects_data',
-    SETTINGS: 'taskflow_user_settings'
+    PROJECTS: 'tarefas_projects_data',
+    SETTINGS: 'tarefas_user_settings'
   };
 
   /* ==========================================================================
-     2. DADOS DE EXEMPLO (SEMENTE INICIAL / DEMO)
+     2. DADOS INICIAIS
      ========================================================================== */
   const SAMPLE_PROJECTS = [
     { id: 'proj-1', name: 'Design System', color: '#4f46e5' },
@@ -27,94 +26,6 @@
     { id: 'proj-3', name: 'Marketing & Growth', color: '#10b981' },
     { id: 'proj-4', name: 'Estratégia 2027', color: '#f59e0b' }
   ];
-
-  function getSampleTasks() {
-    const today = new Date();
-    const formatDate = (date) => date.toISOString().split('T')[0];
-
-    // Auxiliares de datas relativas
-    const dateToday = formatDate(today);
-    const dateTomorrow = formatDate(new Date(today.getTime() + 24 * 60 * 60 * 1000));
-    const dateNextWeek = formatDate(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000));
-    const dateNextMonth = formatDate(new Date(today.getTime() + 45 * 24 * 60 * 60 * 1000));
-    const dateNextYear = formatDate(new Date(today.getTime() + 380 * 24 * 60 * 60 * 1000));
-    const dateYesterday = formatDate(new Date(today.getTime() - 24 * 60 * 60 * 1000));
-
-    return [
-      {
-        id: 'task-1',
-        title: 'Finalizar tokens de cores e componentes no Figma',
-        description: 'Padronizar variáveis de cor, espaçamento e tipografia de acordo com o Design System.',
-        dueDate: dateToday,
-        priority: 'alta',
-        projectId: 'proj-1',
-        category: 'UI/UX',
-        period: 'curto',
-        completed: false,
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'task-2',
-        title: 'Revisar checklist de acessibilidade WCAG AAA',
-        description: 'Garantir contraste de 4.5:1 em botões de prioridade e suporte a navegação por teclado.',
-        dueDate: dateYesterday,
-        priority: 'urgente',
-        projectId: 'proj-1',
-        category: 'Acessibilidade',
-        period: 'curto',
-        completed: false,
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'task-3',
-        title: 'Construir pipeline de testes e métricas no Dashboard',
-        description: 'Implementar cards de indicadores em tempo real para tarefas concluídas e pendentes.',
-        dueDate: dateTomorrow,
-        priority: 'media',
-        projectId: 'proj-2',
-        category: 'Frontend',
-        period: 'curto',
-        completed: false,
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'task-4',
-        title: 'Campanha de lançamento da versão 2.0 do Taskflow',
-        description: 'Criar copy para e-mails de onboarding e sequências de nutrição para novos usuários.',
-        dueDate: dateNextWeek,
-        priority: 'baixa',
-        projectId: 'proj-3',
-        category: 'Marketing',
-        period: 'medio',
-        completed: true,
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'task-5',
-        title: 'Migração para infraestrutura multi-região distribuída',
-        description: 'Garantir latência abaixo de 50ms para clientes globais nos próximos 3 anos.',
-        dueDate: dateNextYear,
-        priority: 'alta',
-        projectId: 'proj-4',
-        category: 'DevOps',
-        period: 'longo',
-        completed: false,
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'task-6',
-        title: 'Pesquisa de benchmark com clientes enterprise',
-        description: 'Entrevistar 10 gerentes de produto para validar roadmap de colaboração em tempo real.',
-        dueDate: dateNextMonth,
-        priority: 'media',
-        projectId: 'proj-4',
-        category: 'Pesquisa',
-        period: 'medio',
-        completed: false,
-        createdAt: new Date().toISOString()
-      }
-    ];
-  }
 
   /* ==========================================================================
      3. ESTADO DA APLICAÇÃO (SINGLE SOURCE OF TRUTH)
@@ -143,12 +54,67 @@
   };
 
   /* ==========================================================================
-     4. PERSISTÊNCIA NO LOCALSTORAGE
+     4. PERSISTÊNCIA E INTEGRAÇÃO COM FIREBASE FIRESTORE
      ========================================================================== */
-  function loadFromStorage() {
+  function getDb() {
+    return window.db;
+  }
+
+  function getFirestoreModule() {
+    return window.firestore;
+  }
+
+  let firestoreUnsubscribe = null;
+
+  function initFirestoreListener() {
+    const db = getDb();
+    const fs = getFirestoreModule();
+
+    if (!db || !fs) {
+      console.warn('Firebase Firestore ainda não está disponível. Aguardando inicialização...');
+      window.addEventListener('firebase-ready', () => {
+        initFirestoreListener();
+      }, { once: true });
+      return;
+    }
+
+    try {
+      const tasksCol = fs.collection(db, 'tasks');
+      firestoreUnsubscribe = fs.onSnapshot(tasksCol, (snapshot) => {
+        const loadedTasks = [];
+        snapshot.forEach((docSnapshot) => {
+          const data = docSnapshot.data();
+          loadedTasks.push({
+            id: docSnapshot.id,
+            title: data.title || '',
+            description: data.description || '',
+            dueDate: data.dueDate || '',
+            priority: data.priority || 'media',
+            projectId: data.projectId || '',
+            category: data.category || '',
+            period: data.period || 'curto',
+            completed: Boolean(data.completed),
+            createdAt: data.createdAt || new Date().toISOString(),
+            updatedAt: data.updatedAt || null
+          });
+        });
+
+        AppState.tasks = loadedTasks;
+        updateDashboardMetrics();
+        renderTaskList();
+        renderProjects();
+      }, (error) => {
+        console.error('Erro na escuta em tempo real do Firestore:', error);
+        showToast('Erro ao sincronizar com o Firestore', 'error');
+      });
+    } catch (err) {
+      console.error('Erro ao configurar listener do Firestore:', err);
+    }
+  }
+
+  function loadLocalSettingsAndProjects() {
     try {
       const storedProjects = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-      const storedTasks = localStorage.getItem(STORAGE_KEYS.TASKS);
       const storedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
 
       if (storedProjects) {
@@ -158,29 +124,12 @@
         saveProjectsToStorage();
       }
 
-      if (storedTasks) {
-        AppState.tasks = JSON.parse(storedTasks);
-      } else {
-        AppState.tasks = getSampleTasks();
-        saveTasksToStorage();
-      }
-
       if (storedSettings) {
         AppState.settings = JSON.parse(storedSettings);
       }
     } catch (err) {
-      console.error('Erro ao ler do LocalStorage:', err);
+      console.error('Erro ao carregar dados locais:', err);
       AppState.projects = SAMPLE_PROJECTS;
-      AppState.tasks = getSampleTasks();
-    }
-  }
-
-  function saveTasksToStorage() {
-    try {
-      localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(AppState.tasks));
-    } catch (err) {
-      console.error('Erro ao salvar tarefas no LocalStorage:', err);
-      showToast('Erro ao gravar dados no armazenamento local', 'error');
     }
   }
 
@@ -199,6 +148,31 @@
     } catch (err) {
       console.error('Erro ao salvar configurações:', err);
     }
+  }
+
+  /* Funções Firestore CRUD assíncronas para tarefas */
+  async function firestoreAddTask(taskData) {
+    const db = getDb();
+    const fs = getFirestoreModule();
+    if (!db || !fs) throw new Error('Firestore não inicializado');
+    const tasksCol = fs.collection(db, 'tasks');
+    return await fs.addDoc(tasksCol, taskData);
+  }
+
+  async function firestoreUpdateTask(taskId, taskData) {
+    const db = getDb();
+    const fs = getFirestoreModule();
+    if (!db || !fs) throw new Error('Firestore não inicializado');
+    const taskDoc = fs.doc(db, 'tasks', taskId);
+    return await fs.updateDoc(taskDoc, taskData);
+  }
+
+  async function firestoreDeleteTask(taskId) {
+    const db = getDb();
+    const fs = getFirestoreModule();
+    if (!db || !fs) throw new Error('Firestore não inicializado');
+    const taskDoc = fs.doc(db, 'tasks', taskId);
+    return await fs.deleteDoc(taskDoc);
   }
 
   /* ==========================================================================
@@ -514,7 +488,7 @@
           
           <!-- Checkbox de Conclusão / Reabertura -->
           <div class="task-checkbox-wrap">
-            <div class="custom-checkbox ${task.completed ? 'checked' : ''}" onclick="window.TaskflowApp.toggleTaskComplete('${task.id}')" title="${task.completed ? 'Reabrir tarefa' : 'Concluir tarefa'}">
+            <div class="custom-checkbox ${task.completed ? 'checked' : ''}" onclick="window.TarefasApp.toggleTaskComplete('${task.id}')" title="${task.completed ? 'Reabrir tarefa' : 'Concluir tarefa'}">
               <i class="fa-solid fa-check"></i>
             </div>
           </div>
@@ -558,10 +532,10 @@
 
           <!-- Menu de Ações (Editar, Excluir) -->
           <div class="task-actions-menu">
-            <button class="btn-task-action" onclick="window.TaskflowApp.openEditTaskModal('${task.id}')" title="Editar Tarefa">
+            <button class="btn-task-action" onclick="window.TarefasApp.openEditTaskModal('${task.id}')" title="Editar Tarefa">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <button class="btn-task-action action-delete" onclick="window.TaskflowApp.promptDeleteTask('${task.id}')" title="Excluir Tarefa">
+            <button class="btn-task-action action-delete" onclick="window.TarefasApp.promptDeleteTask('${task.id}')" title="Excluir Tarefa">
               <i class="fa-solid fa-trash-can"></i>
             </button>
           </div>
@@ -588,17 +562,17 @@
       const count = AppState.tasks.filter(t => t.projectId === project.id).length;
 
       sidebarHtml += `
-        <li class="project-item ${activeClass}" onclick="window.TaskflowApp.selectProjectView('${project.id}')">
+        <li class="project-item ${activeClass}" onclick="window.TarefasApp.selectProjectView('${project.id}')">
           <div class="project-item-left">
             <span class="project-color-dot" style="background-color: ${project.color};"></span>
             <span class="project-name-text" title="${escapeHTML(project.name)}">${escapeHTML(project.name)}</span>
           </div>
           <div class="project-item-actions">
             <span class="badge-count">${count}</span>
-            <button class="btn-icon-subtle" onclick="event.stopPropagation(); window.TaskflowApp.openEditProjectModal('${project.id}')" title="Editar projeto">
+            <button class="btn-icon-subtle" onclick="event.stopPropagation(); window.TarefasApp.openEditProjectModal('${project.id}')" title="Editar projeto">
               <i class="fa-solid fa-pen"></i>
             </button>
-            <button class="btn-icon-subtle text-danger" onclick="event.stopPropagation(); window.TaskflowApp.promptDeleteProject('${project.id}')" title="Excluir projeto">
+            <button class="btn-icon-subtle text-danger" onclick="event.stopPropagation(); window.TarefasApp.promptDeleteProject('${project.id}')" title="Excluir projeto">
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -671,7 +645,7 @@
     setTimeout(() => document.getElementById('taskTitle').focus(), 100);
   }
 
-  function handleSaveTask(event) {
+  async function handleSaveTask(event) {
     event.preventDefault();
 
     const id = document.getElementById('taskFormId').value;
@@ -693,12 +667,10 @@
       return;
     }
 
-    if (id) {
-      // Edição de tarefa existente
-      const taskIndex = AppState.tasks.findIndex(t => t.id === id);
-      if (taskIndex !== -1) {
-        AppState.tasks[taskIndex] = {
-          ...AppState.tasks[taskIndex],
+    try {
+      if (id) {
+        // Edição de tarefa existente no Firestore
+        await firestoreUpdateTask(id, {
           title,
           description,
           dueDate,
@@ -707,47 +679,50 @@
           category,
           period,
           updatedAt: new Date().toISOString()
-        };
+        });
         showToast('Tarefa atualizada com sucesso!', 'success');
+      } else {
+        // Criação de nova tarefa no Firestore
+        await firestoreAddTask({
+          title,
+          description,
+          dueDate,
+          priority,
+          projectId,
+          category,
+          period,
+          completed: false,
+          createdAt: new Date().toISOString()
+        });
+        showToast('Tarefa criada com sucesso!', 'success');
       }
-    } else {
-      // Criação de nova tarefa
-      const newTask = {
-        id: 'task-' + Date.now(),
-        title,
-        description,
-        dueDate,
-        priority,
-        projectId,
-        category,
-        period,
-        completed: false,
-        createdAt: new Date().toISOString()
-      };
-      AppState.tasks.unshift(newTask);
-      showToast('Tarefa criada com sucesso!', 'success');
-    }
 
-    saveTasksToStorage();
-    closeModal('taskModalOverlay');
-    updateDashboardMetrics();
-    renderTaskList();
-    renderProjects();
+      closeModal('taskModalOverlay');
+    } catch (err) {
+      console.error('Erro ao salvar tarefa no Firestore:', err);
+      showToast('Erro ao salvar tarefa no Firebase: ' + err.message, 'error');
+    }
   }
 
-  function toggleTaskComplete(taskId) {
+  async function toggleTaskComplete(taskId) {
     const task = AppState.tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    task.completed = !task.completed;
-    saveTasksToStorage();
-    updateDashboardMetrics();
-    renderTaskList();
+    const newCompleted = !task.completed;
+    try {
+      await firestoreUpdateTask(taskId, {
+        completed: newCompleted,
+        updatedAt: new Date().toISOString()
+      });
 
-    if (task.completed) {
-      showToast('Tarefa marcada como concluída! 🎉', 'success');
-    } else {
-      showToast('Tarefa reaberta no fluxo de trabalho.', 'info');
+      if (newCompleted) {
+        showToast('Tarefa marcada como concluída! 🎉', 'success');
+      } else {
+        showToast('Tarefa reaberta no fluxo de trabalho.', 'info');
+      }
+    } catch (err) {
+      console.error('Erro ao alterar status da tarefa:', err);
+      showToast('Erro ao atualizar status da tarefa.', 'error');
     }
   }
 
@@ -857,19 +832,29 @@
     document.getElementById('confirmModalOverlay').classList.add('open');
   }
 
-  function executePendingDelete() {
+  async function executePendingDelete() {
     const { type, id } = AppState.pendingDelete;
 
     if (type === 'task') {
-      AppState.tasks = AppState.tasks.filter(t => t.id !== id);
-      saveTasksToStorage();
-      showToast('Tarefa excluída permanentemente.', 'info');
+      try {
+        await firestoreDeleteTask(id);
+        showToast('Tarefa excluída permanentemente.', 'info');
+      } catch (err) {
+        console.error('Erro ao excluir tarefa:', err);
+        showToast('Erro ao excluir tarefa no Firestore.', 'error');
+      }
     } else if (type === 'project') {
       AppState.projects = AppState.projects.filter(p => p.id !== id);
-      // Remove tarefas do projeto
-      AppState.tasks = AppState.tasks.filter(t => t.projectId !== id);
+      // Remove tarefas do projeto no Firestore
+      const tasksInProj = AppState.tasks.filter(t => t.projectId === id);
+      for (const t of tasksInProj) {
+        try {
+          await firestoreDeleteTask(t.id);
+        } catch (e) {
+          console.error('Erro ao excluir tarefa vinculada:', e);
+        }
+      }
       saveProjectsToStorage();
-      saveTasksToStorage();
       showToast('Projeto e tarefas vinculadas foram removidos.', 'info');
 
       if (AppState.filters.activeView === `project-${id}`) {
@@ -1008,29 +993,15 @@
     document.getElementById('headerGreeting').textContent = `Olá, ${AppState.settings.userName.split(' ')[0]}`;
   }
 
-  function reloadSampleData() {
-    AppState.projects = SAMPLE_PROJECTS;
-    AppState.tasks = getSampleTasks();
-    saveProjectsToStorage();
-    saveTasksToStorage();
-    updateDashboardMetrics();
-    renderProjects();
-    renderTaskList();
-    closeModal('settingsModalOverlay');
-    showToast('Dados de demonstração restaurados com sucesso!', 'success');
-  }
-
   function clearAllLocalStorage() {
-    localStorage.removeItem(STORAGE_KEYS.TASKS);
     localStorage.removeItem(STORAGE_KEYS.PROJECTS);
     localStorage.removeItem(STORAGE_KEYS.SETTINGS);
-    AppState.tasks = [];
     AppState.projects = [];
     updateDashboardMetrics();
     renderProjects();
     renderTaskList();
     closeModal('settingsModalOverlay');
-    showToast('Todos os dados foram excluídos do LocalStorage.', 'info');
+    showToast('Preferências e projetos locais foram limpos.', 'info');
   }
 
   /* ==========================================================================
@@ -1186,13 +1157,13 @@
     const dateEl = document.getElementById('headerCurrentDate');
     if (dateEl) dateEl.textContent = formatHeaderCurrentDate();
 
-    // 2. Carrega dados do LocalStorage
-    loadFromStorage();
+    // 2. Carrega configurações locais e projetos
+    loadLocalSettingsAndProjects();
 
     // 3. Aplica perfil do usuário
     applyUserSettings();
 
-    // 4. Renderiza componentes
+    // 4. Renderiza componentes iniciais
     renderProjects();
     updateDashboardMetrics();
     renderTaskList();
@@ -1200,11 +1171,14 @@
     // 5. Registra eventos
     setupEventListeners();
 
-    console.log('TASKFLOW inicializado com sucesso. Modo SaaS 100% nativo.');
+    // 6. Conecta e escuta dados em tempo real no Firestore
+    initFirestoreListener();
+
+    console.log('Tarefas inicializado com sucesso. Firebase Firestore ativo.');
   }
 
   // Expõe métodos estáticos para chamadas inline seguras no DOM
-  window.TaskflowApp = {
+  window.TarefasApp = {
     toggleTaskComplete,
     openEditTaskModal,
     promptDeleteTask,
@@ -1212,6 +1186,8 @@
     promptDeleteProject,
     selectProjectView
   };
+  // Compatibilidade caso algum ponto ainda busque TaskflowApp
+  window.TaskflowApp = window.TarefasApp;
 
   // Dispara quando o DOM estiver pronto
   if (document.readyState === 'loading') {
